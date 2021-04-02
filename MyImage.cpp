@@ -118,22 +118,44 @@ void MyImage::Posterize(){
 }
 
 int MyImage::ComptageCouleurs(){
-	std::vector<std::vector<int>> couleurs;
-	for(int i=0; i< (this->GetHeight()*this->GetWidth()*3);i+=3){
-		std::vector<int> couleur;
-		couleur.push_back(this->GetData()[i]);
-		couleur.push_back(this->GetData()[i+1]);
-		couleur.push_back(this->GetData()[i+2]);
-		if (std::find(couleurs.begin(), couleurs.end(), couleur) != couleurs.end()){
+	// std::vector<std::vector<int>> couleurs;
+	// for(int i=0; i< (this->GetHeight()*this->GetWidth()*3);i+=3){
+	// 	std::vector<int> couleur;
+	// 	couleur.push_back(this->GetData()[i]);
+	// 	couleur.push_back(this->GetData()[i+1]);
+	// 	couleur.push_back(this->GetData()[i+2]);
+	// 	if (std::find(couleurs.begin(), couleurs.end(), couleur) != couleurs.end()){
 			
-		} else {
-			couleurs.push_back(couleur);
-			std::cout<< "+1" << std::endl;
-		}
+	// 	} else {
+	// 		couleurs.push_back(couleur);
+	// 		std::cout<< "+1" << std::endl;
+	// 	}
 		
+	// }
+	// std::cout << "fini"<< std::endl;
+	// return couleurs.size();
+
+	bool* couleurs = new bool[256*256*256];
+
+	for(int i = 0; i< (256*256*256); i++){
+		couleurs[i] = false;
 	}
-	std::cout << "fini"<< std::endl;
-	return couleurs.size();
+
+	int nb_couleurs = 0;
+	unsigned long int size = GetHeight() * GetWidth() * 3;
+
+	unsigned char* buffer = GetData();
+
+	for(unsigned long int i=0;i<size;i+=3){
+		int index = (buffer[i] << 16) + (buffer[i+1] << 8) + (buffer[i+2]);
+		if(!couleurs[index]){
+			couleurs[index] = true;
+			nb_couleurs++;
+		}
+	}
+
+	return nb_couleurs;
+
 }
 
 

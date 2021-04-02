@@ -1,11 +1,11 @@
 CC=g++
 CFLAGS=`wx-config --cxxflags`
 LDFLAGS=`wx-config --libs`
-EXEC=App 
+EXEC=App #peut etre App.exe sur windows
 
 all: $(EXEC)
 
-App: main.o MyHistogram.o MyImage.o MyRotateDialog.o MyThresholdDialog.o
+App: main.o MyHistogram.o MyImage.o MyRotateDialog.o MyThresholdDialog.o #Changez le nom ici aussi
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 main.o: main.cpp MyThresholdDialog.hpp MyRotateDialog.hpp MyHistogram.hpp MyImage.hpp
