@@ -2,15 +2,19 @@
 #include <iostream>
 
 MyHistogram::MyHistogram(MyImage *img):image(img){
+	int size = image->GetHeight()*image->GetWidth()*3;
+	int save[size];
+	memcpy(save, image->GetData(), size);
 	image->Desaturate();
 	tableau = (int*) calloc(256, 8);
-	for(int i=0; i< (image->GetHeight()*image->GetWidth()*3);i+=3){
+	for(int i=0;i<size;i+=3){
 		for(int j=0;j<255 && j<= image->GetData()[i];j++){
 			if(j == image->GetData()[i]){
 				tableau[j] +=1;
 		}
 		}
 	}
+	memcpy(image->GetData(), save, size);
 }
 
 void MyHistogram::GetDynamic(int *minValue, int *maxValue){

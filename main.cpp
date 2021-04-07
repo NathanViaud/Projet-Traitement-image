@@ -4,9 +4,13 @@
 #endif
 //#include "MyImage.hpp"
 #include <iostream>
+#include <string>
 #include "MyThresholdDialog.hpp"
 #include "MyRotateDialog.hpp"
 #include "MyHistogram.hpp"
+#include <vector>
+
+
 
 class MyApp: public wxApp
 {
@@ -30,14 +34,25 @@ public:
 	void PosterizeImage();
 	void ComptageCouleursImage();
 	void EnhenceContrastImage();
+	//void OnThresholdImage(wxCommandEvent& event);
+	void LuminosityImage();
+	void SaveFile(wxString fileName);
+	void OnMouseLeftDown(wxMouseEvent &event);
+	void OnMouseMove(wxMouseEvent &event);
+	void PenImage();
 private:
 	wxBitmap m_bitmap;
 	MyImage *m_image;
 	MyHistogram *histo;
 	int m_width;
 	int m_height;
-
+	wxPoint m_onePoint;
+	wxPoint m_mousePoint;
+	std::vector<wxPoint> m_points;
+	bool mode_pen = false;
 };
+
+
 
 class MyFrame: public wxFrame
 {
@@ -53,12 +68,11 @@ private:
 	void OnMoinsLarge(wxCommandEvent& event);
 	void MouseHandler(wxMouseEvent& event);
 	void OnOpenImage(wxCommandEvent& event);
-	void OnMirrorV(wxCommandEvent& event);
-	void OnMirrorH(wxCommandEvent& event);
-	void OnBlur(wxCommandEvent& event);
-	void OnRotation(wxCommandEvent& event);
 	void OnProcessImage(wxCommandEvent& event);
+	void OnSaveFile(wxCommandEvent& WXUNUSED(event));
 };
+
+
 
 enum	// énumération. Elle gère la numérotation automatiquement 
 {
@@ -77,7 +91,10 @@ enum	// énumération. Elle gère la numérotation automatiquement
 	ID_Threshold,
 	ID_Posterize,
 	ID_Comptage,
-	ID_EContrast
+	ID_EContrast,
+	ID_Luminosity,
+	ID_SaveFile,
+	ID_Pen
 };
 
 IMPLEMENT_APP(MyApp)
@@ -96,6 +113,7 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 {
 	
 	m_panel = new MyPanel(this);
+
 	
 	 Bind(wxEVT_MOTION, &MyFrame::MouseHandler, this);
 	
@@ -107,6 +125,7 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 	menuFile->AppendSeparator();
 	menuFile->Append(ID_About, wxT("About\tCtrl-A")) ;
 	menuFile->Append(wxID_EXIT) ;
+	menuFile->Append(ID_SaveFile, wxT("Save"));
 
 	Bind(wxEVT_MENU, &MyFrame::OnHello, this, ID_Hello) ;
 	Bind(wxEVT_MENU, &MyFrame::OnPlusLarge, this, ID_PlusLarge);
@@ -114,6 +133,7 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 	Bind(wxEVT_MENU, &MyFrame::OnOpenImage, this, ID_OpenImage);
 	Bind(wxEVT_MENU, &MyFrame::OnAbout, this, ID_About);
 	Bind(wxEVT_MENU, &MyFrame::OnExit, this, wxID_EXIT) ;
+	Bind(wxEVT_MENU, &MyFrame::OnSaveFile, this,ID_SaveFile );
 
 	wxMenu  *menuHelp = new wxMenu;
 	menuHelp->Append(ID_EC, wxT("En cours\tCtrl-E"));
@@ -130,6 +150,8 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 	menuProcess->Append(ID_Posterize, wxT("Posterize"));
 	menuProcess->Append(ID_Comptage, wxT("Comptage couleurs"));
 	menuProcess->Append(ID_EContrast, wxT("Enhence contrast"));
+	menuProcess->Append(ID_Luminosity, wxT("Add Luminosity"));
+	menuProcess->Append(ID_Pen, wxT("Mode stylo"));
 
 	Bind(wxEVT_MENU, &MyFrame::OnProcessImage, this, ID_MirrorV);
 	Bind(wxEVT_MENU, &MyFrame::OnProcessImage, this, ID_MirrorH);
@@ -141,6 +163,8 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 	Bind(wxEVT_MENU, &MyFrame::OnProcessImage, this, ID_Posterize);
 	Bind(wxEVT_MENU, &MyFrame::OnProcessImage, this, ID_Comptage);
 	Bind(wxEVT_MENU, &MyFrame::OnProcessImage, this, ID_EContrast);
+	Bind(wxEVT_MENU, &MyFrame::OnProcessImage, this, ID_Luminosity);
+	Bind(wxEVT_MENU, &MyFrame::OnProcessImage, this, ID_Pen);
 	
 	
 	
@@ -200,20 +224,11 @@ void MyFrame::MouseHandler(wxMouseEvent& event){
 	SetStatusText(mousePos, 0);
 }
 
-void MyFrame::OnMirrorV(wxCommandEvent& event){
-	m_panel->MirrorImageV();
-}
-
-void MyFrame::OnMirrorH(wxCommandEvent& event){
-	m_panel->MirrorImageH();
-}
-
-void MyFrame::OnBlur(wxCommandEvent& event){
-	m_panel->BlurImage();
-}
-
-void MyFrame::OnRotation(wxCommandEvent& event){
-	m_panel->RotationImage();
+void MyFrame::OnSaveFile(wxCommandEvent& WXUNUSED(event)){
+	wxString filename = wxSaveFileSelector(wxT("Save file as"), wxT("*.png"), wxT("data"));
+	if(!filename.empty()){
+		m_panel->SaveFile(filename);
+	}
 }
 
 void MyFrame::OnProcessImage(wxCommandEvent& event){
@@ -249,12 +264,23 @@ void MyFrame::OnProcessImage(wxCommandEvent& event){
 		case ID_EContrast:
 			m_panel->EnhenceContrastImage();
 			break;
+		case ID_Luminosity:
+			m_panel->LuminosityImage();
+			break;
+		case ID_Pen:
+			m_panel->PenImage();
+			break;
 	}
 }
 
 MyPanel::MyPanel(wxWindow *parent) : wxPanel(parent) {
 	Bind(wxEVT_PAINT, &MyPanel::OnPaint, this);
 	m_image = nullptr;
+	m_onePoint = wxPoint(0,0);
+	m_mousePoint = m_onePoint;
+	Bind(wxEVT_MOTION, &MyPanel::OnMouseMove, this);
+	Bind(wxEVT_LEFT_DOWN, &MyPanel::OnMouseLeftDown, this);
+	//Bind(MON_EVENEMENT, &MyPanel::OnThresholdImage, this) ;
 }
 
 MyPanel::~MyPanel() {}
@@ -262,17 +288,32 @@ MyPanel::~MyPanel() {}
 void MyPanel::OpenImage(wxString fileName){
 	m_image = new MyImage(fileName);
 	histo = new MyHistogram(m_image);
-//	m_width = m_image->GetWidth();
-//	m_height = m_image->GetHeight();
-//	this->GetParent()->SetSize(m_width,m_height);
+	m_width = m_image->GetWidth();
+	m_height = m_image->GetHeight();
+	this->GetParent()->SetSize(m_width+100,m_height+100);
 	this->Refresh();
 }
 
 void MyPanel::OnPaint(wxPaintEvent & WXUNUSED(event)){
 	wxPaintDC dc(this);
+	
 	if(m_image!=nullptr){
 		m_bitmap = wxBitmap(*m_image);
 		dc.DrawBitmap(m_bitmap,0,0);
+		wxPen pen(*wxBLACK,5,wxPENSTYLE_SOLID);
+		pen.SetWidth(5);
+		dc.SetPen( pen );
+		if(mode_pen){
+			//dc.DrawCircle(wxPoint(m_onePoint),50);
+			dc.DrawLine(m_mousePoint,m_onePoint);
+		}
+		if(m_points.size() > 0){
+			for(int i=0;i<m_points.size();i+=2){
+				dc.DrawLine(m_points[i],m_points[i+1]);
+				std::cout << "p1 x: "<< m_points[i].x <<"p1 y: " <<m_points[i].y <<"p2 x: " <<m_points[i+1].x <<"p2 y: " <<m_points[i+1].y << std::endl;
+			}
+		}
+		
 	}
 }
 
@@ -307,7 +348,7 @@ void MyPanel::RotationImage(){
 			} else if (dlg->RadioBox1->GetSelection() == 1){
 				*m_image = m_image->Rotate180();
 			} else{
-				std::cout << "ça marche pas" << std::endl;
+				std::cout << "erreur" << std::endl;
 			}
 		}
 	}
@@ -330,7 +371,7 @@ void MyPanel::DesaturateImage(){
 	this->Refresh();
 }
 
-//void MyPanel::ThresholdImage(){
+//void MyPanel::ThresholdImage(){ //V1
 //	MyThresholdDialog *dlg = new MyThresholdDialog(this, -1, wxT("Threshold"), wxDefaultPosition, wxSize(250,140)) ;
 //	dlg->ShowModal() ;
 //	if(m_image!=nullptr){
@@ -340,13 +381,17 @@ void MyPanel::DesaturateImage(){
 //}
 
 void MyPanel::ThresholdImage(){			//V2
-	MyImage *save = new MyImage();
+	int size = m_image->GetHeight()*m_image->GetWidth()*3;
+	int save[size];
+
+	memcpy(save, m_image->GetData(), size);
 	MyThresholdDialog *dlg = new MyThresholdDialog(this, -1, wxT("Threshold"), wxDefaultPosition, wxSize(250, 140));
 	if(m_image!=nullptr){
-		if(dlg->ShowModal() == wxID_OK){
+		int res = dlg->ShowModal();
+		if(res == wxID_OK){
 			m_image->Threshold(dlg->m_threshold->GetValue());
-		} else if(dlg->ShowModal() == wxID_CANCEL){
-			//m_image = *save->Copy();
+		} else if(res == wxID_CANCEL){
+			memcpy(m_image->GetData(), save, size);
 		}
 	}
 	this->Refresh();
@@ -381,3 +426,68 @@ void MyPanel::EnhenceContrastImage(){
 	
 }
 
+// void MyPanel::OnThresholdImage(wxCommandEvent& event){     	//TP7 marche pas complétement mais pas obligatoire pour l'app finale
+// 	//std::cout << "OnThresholdImage" << std::endl;
+// 	std::cout << event.GetInt() << std::endl;
+// 	MyThresholdDialog *dlg = new MyThresholdDialog(this, -1, wxT("Threshold"), wxDefaultPosition, wxSize(250, 140));
+// 	if(m_image!=nullptr){
+// 		if(wxID_OK){
+// 			m_image->Luminosity(event.GetInt());
+// 		}
+// 	}
+	
+// }
+
+
+//Augmente la luminosité de l'image
+void MyPanel::LuminosityImage(){
+	int size = m_image->GetHeight()*m_image->GetWidth()*3;
+	int save[size];
+
+	memcpy(save, m_image->GetData(), size);
+	MyThresholdDialog *dlg = new MyThresholdDialog(this, -1, wxT("Luminosity"), wxDefaultPosition, wxSize(250, 140));
+	if(m_image!=nullptr){
+		int res = dlg->ShowModal();
+		if(res == wxID_OK){
+			m_image->Luminosity(dlg->m_threshold->GetValue());
+		} else if(res == wxID_CANCEL){
+			memcpy(m_image->GetData(), save, size);
+		}
+	}
+	this->Refresh();
+}
+
+void MyPanel::SaveFile(wxString fileName)
+//------------------------------------------------------------------------
+{
+	// just to create a tiny file
+	FILE* f = fopen(fileName, "w") ;
+	if (!f)
+		wxMessageBox(wxT("Cannot save file"));
+	else
+	{
+		this->SaveFile(fileName);
+	}
+}
+
+void MyPanel::OnMouseLeftDown(wxMouseEvent &event){
+	if(m_onePoint== wxPoint(0,0)){
+		m_points.push_back(m_mousePoint);
+	} else{
+		m_points.push_back(m_onePoint);
+	}
+	m_onePoint.x = event.m_x;
+	m_onePoint.y = event.m_y;
+	m_points.push_back(m_onePoint);
+	Refresh();
+}
+
+void MyPanel::OnMouseMove(wxMouseEvent &event){
+	m_mousePoint.x = event.m_x;
+	m_mousePoint.y = event.m_y;
+	Refresh();
+}
+
+void MyPanel::PenImage(){
+	mode_pen = !mode_pen;
+}

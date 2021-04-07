@@ -49,7 +49,7 @@ void MyImage::Threshold(int seuil){
 	}
 }
 
-void MyImage::Mirror(bool horizontaly){
+void MyImage::Mirror(bool horizontaly){  //ça marche pas
 	int m = this->GetWidth()/2;
 	
 	for(int y =1; y<this->GetHeight();y++){
@@ -106,35 +106,14 @@ MyImage MyImage::Rotate90(){
 void MyImage::Posterize(){
 	for(int i=0;i<(this->GetHeight()*this->GetWidth()*3);i++){
 		if(this->GetData()[i]>127){
-			std::cout << "255 : " << std::to_string(this->GetData()[i]) << " = ";
 			this->GetData()[i] = 255;
-			std::cout << std::to_string(this->GetData()[i]) << std::endl;
 		} else{
-			std::cout << "0 : " << std::to_string(this->GetData()[i])<<" = ";
 			this->GetData()[i] = 0;
-			std::cout << std::to_string(this->GetData()[i]) << std::endl;
 		}
 	}
 }
 
 int MyImage::ComptageCouleurs(){
-	// std::vector<std::vector<int>> couleurs;
-	// for(int i=0; i< (this->GetHeight()*this->GetWidth()*3);i+=3){
-	// 	std::vector<int> couleur;
-	// 	couleur.push_back(this->GetData()[i]);
-	// 	couleur.push_back(this->GetData()[i+1]);
-	// 	couleur.push_back(this->GetData()[i+2]);
-	// 	if (std::find(couleurs.begin(), couleurs.end(), couleur) != couleurs.end()){
-			
-	// 	} else {
-	// 		couleurs.push_back(couleur);
-	// 		std::cout<< "+1" << std::endl;
-	// 	}
-		
-	// }
-	// std::cout << "fini"<< std::endl;
-	// return couleurs.size();
-
 	bool* couleurs = new bool[256*256*256];
 
 	for(int i = 0; i< (256*256*256); i++){
@@ -168,5 +147,16 @@ void MyImage::EnhenceContrast(int minValue, int maxValue){
 		this->GetData()[i] = f * this->GetData()[i] + d;
 	}
 	
+}
+
+void MyImage::Luminosity(int dl){
+	unsigned char* buffer = this->GetData();
+	for(int i=0; i< (this->GetHeight()*this->GetWidth()*3);i++){
+		if(buffer[i]+dl > 255){
+			buffer[i] = 255;
+		} else{
+			buffer[i] = buffer[i] + dl;
+		}
+	}
 }
 

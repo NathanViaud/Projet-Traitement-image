@@ -18,4 +18,5 @@ public:
 	void Posterize();
 	int ComptageCouleurs();
 	void EnhenceContrast(int minValue, int maxValue);
+	void Luminosity(int dl);
 };
