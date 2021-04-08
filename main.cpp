@@ -364,7 +364,7 @@ void MyFrame::OnProcessImage(wxCommandEvent& event){
 MyPanel::MyPanel(wxWindow *parent) : wxPanel(parent) {
 	int w,h;
 	GetParent()->GetClientSize(&w, &h);
-	SetSize(wxRect(wxPoint(WIDGET_PANEL_WIDTH,0), wxPoint(w+200, h+200))) ;
+	SetSize(wxRect(wxPoint(WIDGET_PANEL_WIDTH,0), wxPoint(w, h))) ;
 	SetBackgroundColour(wxColour(0xFF,0xFF,0xFF)) ;
 	Bind(wxEVT_PAINT, &MyPanel::OnPaint, this);
 	m_image = nullptr;
@@ -382,7 +382,8 @@ void MyPanel::OpenImage(wxString fileName){
 	histo = new MyHistogram(m_image);
 	m_width = m_image->GetWidth();
 	m_height = m_image->GetHeight();
-	this->GetParent()->SetSize(m_width+100,m_height+100);
+	this->GetParent()->SetSize(m_width+WIDGET_PANEL_WIDTH,m_height+50);
+	this->SetSize(m_width, m_height);
 	this->Refresh();
 	Save();
 }
