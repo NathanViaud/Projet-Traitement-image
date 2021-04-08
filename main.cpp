@@ -9,7 +9,46 @@
 #include "MyRotateDialog.hpp"
 #include "MyHistogram.hpp"
 #include <vector>
+#include<wx/filedlg.h>
+#include <wx/image.h>
+#include <wx/file.h>
+#include <wx/bitmap.h>
 
+
+//constante utiles
+#define APPLICATION_WIDTH	600
+#define APPLICATION_HEIGHT	500 
+#define WIDGET_PANEL_WIDTH	150
+#define WIDGET_Y0			30
+#define WIDGET_Y_STEP		50
+
+
+enum	// énumération. Elle gère la numérotation automatiquement 
+{
+	ID_Hello = 1,
+	ID_About,	// ID_Truc a pour valeur 2 
+	ID_EC,	// ID_Machin a pour valeur 3 
+	ID_PlusLarge,
+	ID_MoinsLarge,
+	ID_OpenImage,
+	ID_MirrorV,
+	ID_MirrorH,
+	ID_Blur,
+	ID_Rotation,
+	ID_Negative,
+	ID_Desaturate,
+	ID_Threshold,
+	ID_Posterize,
+	ID_Comptage,
+	ID_EContrast,
+	ID_Luminosity,
+	ID_SaveFile,
+	ID_CHECKPEN,
+	ID_BUTTONRETURN,
+	ID_BUTTONIMGRETURN
+};
+
+class MyControlPanel;
 
 
 class MyApp: public wxApp
@@ -39,7 +78,9 @@ public:
 	void SaveFile(wxString fileName);
 	void OnMouseLeftDown(wxMouseEvent &event);
 	void OnMouseMove(wxMouseEvent &event);
-	void PenImage();
+	void RemoveLastline();
+	void Save();
+	void Last();
 private:
 	wxBitmap m_bitmap;
 	MyImage *m_image;
@@ -49,7 +90,24 @@ private:
 	wxPoint m_onePoint;
 	wxPoint m_mousePoint;
 	std::vector<wxPoint> m_points;
-	bool mode_pen = false;
+	bool ligneEnCours;
+	bool mode_stylo;
+	std::vector<MyImage*> m_save;
+};
+
+
+class MyControlPanel: public wxPanel{
+public:
+	MyControlPanel(wxWindow *parent);
+	bool GetPenValue(){return m_checkPen->GetValue();};
+private:
+	wxCheckBox* m_checkPen;
+	wxButton* m_returnButton;
+	wxButton* m_imgReturn;
+	void OnCheckPen(wxCommandEvent &event);
+	void OnBackButton(wxCommandEvent &event);
+	void OnReturnButton(wxCommandEvent &event);
+	void OnImgReturnButton(wxCommandEvent &event);
 };
 
 
@@ -58,8 +116,12 @@ class MyFrame: public wxFrame
 {
 public:
 	MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size);
+	MyControlPanel* GetControlPanel(){return m_controlPanel;};
+	MyPanel* GetPanel(){return m_panel;};
+	void RefreshDrawing(){m_panel->Refresh();};
 private:
 	MyPanel *m_panel;
+	MyControlPanel *m_controlPanel;
 	void OnHello(wxCommandEvent& event);
 	void OnExit(wxCommandEvent& event);
 	void OnAbout(wxCommandEvent& event);
@@ -74,28 +136,13 @@ private:
 
 
 
-enum	// énumération. Elle gère la numérotation automatiquement 
-{
-	ID_Hello = 1,
-	ID_About,	// ID_Truc a pour valeur 2 
-	ID_EC,	// ID_Machin a pour valeur 3 
-	ID_PlusLarge,
-	ID_MoinsLarge,
-	ID_OpenImage,
-	ID_MirrorV,
-	ID_MirrorH,
-	ID_Blur,
-	ID_Rotation,
-	ID_Negative,
-	ID_Desaturate,
-	ID_Threshold,
-	ID_Posterize,
-	ID_Comptage,
-	ID_EContrast,
-	ID_Luminosity,
-	ID_SaveFile,
-	ID_Pen
-};
+
+
+
+//************************************************************************************************//
+//						MyApp													   				  //
+//************************************************************************************************//
+
 
 IMPLEMENT_APP(MyApp)
 
@@ -108,14 +155,59 @@ bool MyApp::OnInit()
 	return true;
 }
 
+
+//************************************************************************************************//
+//											MyControlPanel										  //
+//************************************************************************************************//
+
+MyControlPanel::MyControlPanel(wxWindow *parent): wxPanel(parent){
+	 int w, h, y;
+	 GetParent()->GetSize(&w, &h);
+	 SetSize(wxRect(wxPoint(0,0), wxPoint(WIDGET_PANEL_WIDTH, h))) ;
+	 SetBackgroundColour(*wxLIGHT_GREY) ;
+
+	y = WIDGET_Y0;
+	m_checkPen = new wxCheckBox(this, ID_CHECKPEN, "Mode Stylo", wxPoint(10, y), wxSize(100,20)) ;
+	Bind(wxEVT_CHECKBOX, &MyControlPanel::OnCheckPen, this, ID_CHECKPEN) ;
+
+	y+= WIDGET_Y_STEP;
+	m_returnButton = new wxButton(this, ID_BUTTONRETURN, wxT("Return"), wxPoint(10, y)) ;
+	Bind(wxEVT_BUTTON, &MyControlPanel::OnReturnButton, this, ID_BUTTONRETURN) ;
+
+	y+= WIDGET_Y_STEP;
+	m_imgReturn = new wxButton(this, ID_BUTTONIMGRETURN, wxT("Return Image"), wxPoint(10, y)) ;
+	Bind(wxEVT_BUTTON, &MyControlPanel::OnImgReturnButton, this, ID_BUTTONIMGRETURN) ;
+}
+
+void MyControlPanel::OnCheckPen(wxCommandEvent &event){
+	std::cout << "OnCheckPen" << std::endl;
+}
+
+void MyControlPanel::OnReturnButton(wxCommandEvent &event){
+	MyFrame* frame = (MyFrame*)GetParent();
+	frame->GetPanel()->RemoveLastline();
+	frame->RefreshDrawing();
+}
+
+void MyControlPanel::OnImgReturnButton(wxCommandEvent &event){
+	MyFrame* frame = (MyFrame*)GetParent();
+	frame->GetPanel()->Last();
+}
+
+//************************************************************************************************//
+//											MyFrame   											  //
+//************************************************************************************************//
+
+
 MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 : wxFrame(NULL, wxID_ANY, title, pos, size)
 {
-	
-	m_panel = new MyPanel(this);
 
+	m_controlPanel = new MyControlPanel(this);
+	m_panel = new MyPanel(this);
 	
-	 Bind(wxEVT_MOTION, &MyFrame::MouseHandler, this);
+	
+	Bind(wxEVT_MOTION, &MyFrame::MouseHandler, this);
 	
 	wxMenu *menuFile = new wxMenu ;
 	menuFile->Append(ID_Hello, wxT("Hello...\tCtrl-H"), wxT("Cliquez ici")) ;
@@ -124,7 +216,7 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 	menuFile->Append(ID_OpenImage, wxT("Ouvrir"));
 	menuFile->AppendSeparator();
 	menuFile->Append(ID_About, wxT("About\tCtrl-A")) ;
-	menuFile->Append(wxID_EXIT) ;
+	menuFile->Append(wxID_EXIT);
 	menuFile->Append(ID_SaveFile, wxT("Save"));
 
 	Bind(wxEVT_MENU, &MyFrame::OnHello, this, ID_Hello) ;
@@ -151,7 +243,6 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 	menuProcess->Append(ID_Comptage, wxT("Comptage couleurs"));
 	menuProcess->Append(ID_EContrast, wxT("Enhence contrast"));
 	menuProcess->Append(ID_Luminosity, wxT("Add Luminosity"));
-	menuProcess->Append(ID_Pen, wxT("Mode stylo"));
 
 	Bind(wxEVT_MENU, &MyFrame::OnProcessImage, this, ID_MirrorV);
 	Bind(wxEVT_MENU, &MyFrame::OnProcessImage, this, ID_MirrorH);
@@ -164,7 +255,6 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 	Bind(wxEVT_MENU, &MyFrame::OnProcessImage, this, ID_Comptage);
 	Bind(wxEVT_MENU, &MyFrame::OnProcessImage, this, ID_EContrast);
 	Bind(wxEVT_MENU, &MyFrame::OnProcessImage, this, ID_Luminosity);
-	Bind(wxEVT_MENU, &MyFrame::OnProcessImage, this, ID_Pen);
 	
 	
 	
@@ -267,13 +357,15 @@ void MyFrame::OnProcessImage(wxCommandEvent& event){
 		case ID_Luminosity:
 			m_panel->LuminosityImage();
 			break;
-		case ID_Pen:
-			m_panel->PenImage();
-			break;
 	}
 }
 
+
 MyPanel::MyPanel(wxWindow *parent) : wxPanel(parent) {
+	int w,h;
+	GetParent()->GetClientSize(&w, &h);
+	SetSize(wxRect(wxPoint(WIDGET_PANEL_WIDTH,0), wxPoint(w+200, h+200))) ;
+	SetBackgroundColour(wxColour(0xFF,0xFF,0xFF)) ;
 	Bind(wxEVT_PAINT, &MyPanel::OnPaint, this);
 	m_image = nullptr;
 	m_onePoint = wxPoint(0,0);
@@ -292,25 +384,37 @@ void MyPanel::OpenImage(wxString fileName){
 	m_height = m_image->GetHeight();
 	this->GetParent()->SetSize(m_width+100,m_height+100);
 	this->Refresh();
+	Save();
 }
 
 void MyPanel::OnPaint(wxPaintEvent & WXUNUSED(event)){
 	wxPaintDC dc(this);
+
+	MyFrame* frame = (MyFrame*)GetParent();
+	mode_stylo = frame->GetControlPanel()->GetPenValue();
+	if(!mode_stylo){
+		ligneEnCours = false;
+		if(m_points.size()%2==1){
+			m_points.pop_back();
+		}
+	}
+	
 	
 	if(m_image!=nullptr){
 		m_bitmap = wxBitmap(*m_image);
 		dc.DrawBitmap(m_bitmap,0,0);
-		wxPen pen(*wxBLACK,5,wxPENSTYLE_SOLID);
-		pen.SetWidth(5);
-		dc.SetPen( pen );
-		if(mode_pen){
-			//dc.DrawCircle(wxPoint(m_onePoint),50);
+		if(mode_stylo && ligneEnCours){
 			dc.DrawLine(m_mousePoint,m_onePoint);
 		}
+		wxPen pen(*wxBLACK,5,wxPENSTYLE_SOLID);
+		pen.SetWidth(5);
+		dc.SetPen(pen);
 		if(m_points.size() > 0){
-			for(int i=0;i<m_points.size();i+=2){
-				dc.DrawLine(m_points[i],m_points[i+1]);
-				std::cout << "p1 x: "<< m_points[i].x <<"p1 y: " <<m_points[i].y <<"p2 x: " <<m_points[i+1].x <<"p2 y: " <<m_points[i+1].y << std::endl;
+			for(int i=0;i<m_points.size()-1;i+=2){
+				if(m_points[i+1] != wxPoint(0,0)){
+					dc.DrawLine(m_points[i],m_points[i+1]);
+				}
+				
 			}
 		}
 		
@@ -320,6 +424,7 @@ void MyPanel::OnPaint(wxPaintEvent & WXUNUSED(event)){
 void MyPanel::MirrorImageH(){
 	if(m_image!=nullptr){
 		m_image->Mirror(true);
+		Save();
 	}
 	this->Refresh();
 }
@@ -327,14 +432,15 @@ void MyPanel::MirrorImageH(){
 void MyPanel::MirrorImageV(){
 	if(m_image!=nullptr){
 		m_image->Mirror(false);
+		Save();
 	}
 	this->Refresh();
-	
 }
 
 void MyPanel::BlurImage(){
 	if(m_image!=nullptr){
 		*m_image = m_image->Blur(10);
+		Save();
 	}
 	this->Refresh();
 }
@@ -351,6 +457,7 @@ void MyPanel::RotationImage(){
 				std::cout << "erreur" << std::endl;
 			}
 		}
+		Save();		
 	}
 	this->Refresh();
 }
@@ -358,6 +465,7 @@ void MyPanel::RotationImage(){
 void MyPanel::NegativeImage(){
 	if(m_image!=nullptr){
 		m_image->Negative();
+		Save();
 	}
 	this->Refresh();
 }
@@ -367,6 +475,7 @@ void MyPanel::DesaturateImage(){
 		m_image->Desaturate();
 		int max, min;
 		histo->GetDynamic(&min, &max);
+		Save();
 	}
 	this->Refresh();
 }
@@ -393,6 +502,7 @@ void MyPanel::ThresholdImage(){			//V2
 		} else if(res == wxID_CANCEL){
 			memcpy(m_image->GetData(), save, size);
 		}
+		Save();
 	}
 	this->Refresh();
 }
@@ -400,6 +510,7 @@ void MyPanel::ThresholdImage(){			//V2
 void MyPanel::PosterizeImage(){
 	if(m_image!=nullptr){
 		m_image->Posterize();
+		Save();
 	}
 	this->Refresh();
 }
@@ -422,6 +533,7 @@ void MyPanel::EnhenceContrastImage(){
 		this->Refresh();
 		MyHistogram *hist = new MyHistogram(m_image);
 		hist->GetDynamic(&min, &max);
+		Save();
 	}
 	
 }
@@ -453,8 +565,10 @@ void MyPanel::LuminosityImage(){
 		} else if(res == wxID_CANCEL){
 			memcpy(m_image->GetData(), save, size);
 		}
+		Save();
 	}
 	this->Refresh();
+
 }
 
 void MyPanel::SaveFile(wxString fileName)
@@ -471,23 +585,50 @@ void MyPanel::SaveFile(wxString fileName)
 }
 
 void MyPanel::OnMouseLeftDown(wxMouseEvent &event){
-	if(m_onePoint== wxPoint(0,0)){
-		m_points.push_back(m_mousePoint);
-	} else{
-		m_points.push_back(m_onePoint);
+	if(m_points.size()%2 ==0){
+		ligneEnCours = true;
+	} else {
+		ligneEnCours = false;
 	}
-	m_onePoint.x = event.m_x;
-	m_onePoint.y = event.m_y;
-	m_points.push_back(m_onePoint);
-	Refresh();
+	if(mode_stylo){
+		std::cout << ligneEnCours << std::endl;
+		m_onePoint.x = event.m_x;
+		m_onePoint.y = event.m_y;
+		m_points.push_back(m_onePoint);
+		std::cout << m_points[0].x << "|"  << m_points[0].y << std::endl;
+		Refresh();
+	}
+	
 }
 
 void MyPanel::OnMouseMove(wxMouseEvent &event){
-	m_mousePoint.x = event.m_x;
-	m_mousePoint.y = event.m_y;
+	if(ligneEnCours == true){
+		m_mousePoint.x = event.m_x;
+		m_mousePoint.y = event.m_y;
+	}
 	Refresh();
 }
 
-void MyPanel::PenImage(){
-	mode_pen = !mode_pen;
+void MyPanel::RemoveLastline(){
+	if(m_points.size()>1 && !ligneEnCours){
+		m_points.pop_back();
+		m_points.pop_back();
+	}
+}
+
+void MyPanel::Save(){
+	int size = m_image->GetHeight()*m_image->GetWidth()*3;
+	MyImage* save = new MyImage(m_image->GetWidth(), m_image->GetHeight());
+	memcpy(save->GetData(), m_image->GetData(), size);
+	m_save.push_back(save);
+}
+
+void MyPanel::Last(){
+	if(m_save.size()>1){
+		m_save.pop_back();
+	}
+	std::cout<< "Last" << std::endl;
+	int size = m_image->GetHeight()*m_image->GetWidth()*3;
+	memcpy(m_image->GetData(), m_save[m_save.size()-1]->GetData(), size);
+	this->Refresh();
 }
