@@ -16,8 +16,6 @@
 
 
 //constante utiles
-#define APPLICATION_WIDTH	600
-#define APPLICATION_HEIGHT	500 
 #define WIDGET_PANEL_WIDTH	150
 #define WIDGET_Y0			30
 #define WIDGET_Y_STEP		50
@@ -160,6 +158,8 @@ bool MyApp::OnInit()
 //											MyControlPanel										  //
 //************************************************************************************************//
 
+
+// Création d'un panel de controle pour gérer le retour sur les retouches images et le mode ligne
 MyControlPanel::MyControlPanel(wxWindow *parent): wxPanel(parent){
 	 int w, h, y;
 	 GetParent()->GetSize(&w, &h);
@@ -167,28 +167,31 @@ MyControlPanel::MyControlPanel(wxWindow *parent): wxPanel(parent){
 	 SetBackgroundColour(*wxLIGHT_GREY) ;
 
 	y = WIDGET_Y0;
-	m_checkPen = new wxCheckBox(this, ID_CHECKPEN, "Mode Stylo", wxPoint(10, y), wxSize(100,20)) ;
+	m_checkPen = new wxCheckBox(this, ID_CHECKPEN, "Mode Ligne", wxPoint(10, y), wxSize(100,20)) ;
 	Bind(wxEVT_CHECKBOX, &MyControlPanel::OnCheckPen, this, ID_CHECKPEN) ;
 
 	y+= WIDGET_Y_STEP;
-	m_returnButton = new wxButton(this, ID_BUTTONRETURN, wxT("Return"), wxPoint(10, y)) ;
+	m_returnButton = new wxButton(this, ID_BUTTONRETURN, wxT("Supprimer ligne"), wxPoint(10, y)) ;
 	Bind(wxEVT_BUTTON, &MyControlPanel::OnReturnButton, this, ID_BUTTONRETURN) ;
 
 	y+= WIDGET_Y_STEP;
-	m_imgReturn = new wxButton(this, ID_BUTTONIMGRETURN, wxT("Return Image"), wxPoint(10, y)) ;
+	m_imgReturn = new wxButton(this, ID_BUTTONIMGRETURN, wxT("Retour image"), wxPoint(10, y)) ;
 	Bind(wxEVT_BUTTON, &MyControlPanel::OnImgReturnButton, this, ID_BUTTONIMGRETURN) ;
 }
 
+// Activation ou désactivation du mode Stylo
 void MyControlPanel::OnCheckPen(wxCommandEvent &event){
 	std::cout << "OnCheckPen" << std::endl;
 }
 
+// Retire la dernière ligne
 void MyControlPanel::OnReturnButton(wxCommandEvent &event){
 	MyFrame* frame = (MyFrame*)GetParent();
 	frame->GetPanel()->RemoveLastline();
 	frame->RefreshDrawing();
 }
 
+// annule la dernière modification de l'image
 void MyControlPanel::OnImgReturnButton(wxCommandEvent &event){
 	MyFrame* frame = (MyFrame*)GetParent();
 	frame->GetPanel()->Last();
@@ -309,18 +312,21 @@ void MyFrame::OnOpenImage(wxCommandEvent& event){
 	}
 }
 
+// Affichage de la position de la souris
 void MyFrame::MouseHandler(wxMouseEvent& event){
 	std::string mousePos = std::to_string(event.m_x) + " | " + std::to_string(event.m_y);
 	SetStatusText(mousePos, 0);
 }
 
+// Appel de la fonction de sauvegarde (juste un fichier texte)
 void MyFrame::OnSaveFile(wxCommandEvent& WXUNUSED(event)){
-	wxString filename = wxSaveFileSelector(wxT("Save file as"), wxT("*.png"), wxT("data"));
+	wxString filename = wxSaveFileSelector(wxT("Save file as"), wxT("*.txt"), wxT("data"));
 	if(!filename.empty()){
 		m_panel->SaveFile(filename);
 	}
 }
 
+// Fonction pour gérer tous les appel Process
 void MyFrame::OnProcessImage(wxCommandEvent& event){
 	switch(event.GetId()){
 		case ID_Blur:
@@ -360,6 +366,9 @@ void MyFrame::OnProcessImage(wxCommandEvent& event){
 	}
 }
 
+//************************************************************************************************//
+//											MyPanel		         								  //
+//************************************************************************************************//
 
 MyPanel::MyPanel(wxWindow *parent) : wxPanel(parent) {
 	int w,h;
@@ -372,11 +381,11 @@ MyPanel::MyPanel(wxWindow *parent) : wxPanel(parent) {
 	m_mousePoint = m_onePoint;
 	Bind(wxEVT_MOTION, &MyPanel::OnMouseMove, this);
 	Bind(wxEVT_LEFT_DOWN, &MyPanel::OnMouseLeftDown, this);
-	//Bind(MON_EVENEMENT, &MyPanel::OnThresholdImage, this) ;
 }
 
 MyPanel::~MyPanel() {}
 
+// Ouverture de l'image
 void MyPanel::OpenImage(wxString fileName){
 	m_image = new MyImage(fileName);
 	histo = new MyHistogram(m_image);
@@ -388,11 +397,14 @@ void MyPanel::OpenImage(wxString fileName){
 	Save();
 }
 
+// Fonction appelée à chaque action
 void MyPanel::OnPaint(wxPaintEvent & WXUNUSED(event)){
 	wxPaintDC dc(this);
 
 	MyFrame* frame = (MyFrame*)GetParent();
 	mode_stylo = frame->GetControlPanel()->GetPenValue();
+
+	//Lorsqu'on désactive le mode stylo on annule la ligne en cours
 	if(!mode_stylo){
 		ligneEnCours = false;
 		if(m_points.size()%2==1){
@@ -400,13 +412,19 @@ void MyPanel::OnPaint(wxPaintEvent & WXUNUSED(event)){
 		}
 	}
 	
-	
+
 	if(m_image!=nullptr){
+
+		// Affichage de l'image
 		m_bitmap = wxBitmap(*m_image);
 		dc.DrawBitmap(m_bitmap,0,0);
+
+		// Affichage de la petite ligne lorsque la ligne est en cours
 		if(mode_stylo && ligneEnCours){
 			dc.DrawLine(m_mousePoint,m_onePoint);
 		}
+
+		// Affichage des lignes sauvegardé avec la largeur approprié
 		wxPen pen(*wxBLACK,5,wxPENSTYLE_SOLID);
 		pen.SetWidth(5);
 		dc.SetPen(pen);
@@ -490,6 +508,7 @@ void MyPanel::DesaturateImage(){
 //	this->Refresh();
 //}
 
+// Version avec sauvegarde de l'image
 void MyPanel::ThresholdImage(){			//V2
 	int size = m_image->GetHeight()*m_image->GetWidth()*3;
 	int save[size];
@@ -539,7 +558,7 @@ void MyPanel::EnhenceContrastImage(){
 	
 }
 
-// void MyPanel::OnThresholdImage(wxCommandEvent& event){     	//TP7 marche pas complétement mais pas obligatoire pour l'app finale
+// void MyPanel::OnThresholdImage(wxCommandEvent& event){     	// V3 non fonctionnelle
 // 	//std::cout << "OnThresholdImage" << std::endl;
 // 	std::cout << event.GetInt() << std::endl;
 // 	MyThresholdDialog *dlg = new MyThresholdDialog(this, -1, wxT("Threshold"), wxDefaultPosition, wxSize(250, 140));
@@ -572,10 +591,9 @@ void MyPanel::LuminosityImage(){
 
 }
 
+//Sauvegarde d'un fichier texte
 void MyPanel::SaveFile(wxString fileName)
-//------------------------------------------------------------------------
 {
-	// just to create a tiny file
 	FILE* f = fopen(fileName, "w") ;
 	if (!f)
 		wxMessageBox(wxT("Cannot save file"));
@@ -585,23 +603,25 @@ void MyPanel::SaveFile(wxString fileName)
 	}
 }
 
+// Début ou fin d'une ligne
 void MyPanel::OnMouseLeftDown(wxMouseEvent &event){
 	if(m_points.size()%2 ==0){
 		ligneEnCours = true;
 	} else {
 		ligneEnCours = false;
 	}
+
+	// Ajout du point si le mode stylo est activé
 	if(mode_stylo){
-		std::cout << ligneEnCours << std::endl;
 		m_onePoint.x = event.m_x;
 		m_onePoint.y = event.m_y;
 		m_points.push_back(m_onePoint);
-		std::cout << m_points[0].x << "|"  << m_points[0].y << std::endl;
 		Refresh();
 	}
 	
 }
 
+// Mise à jour des points quand la souris bouge
 void MyPanel::OnMouseMove(wxMouseEvent &event){
 	if(ligneEnCours == true){
 		m_mousePoint.x = event.m_x;
@@ -617,6 +637,7 @@ void MyPanel::RemoveLastline(){
 	}
 }
 
+// Sauvegarde de l'image(dans le vecteur m_save)
 void MyPanel::Save(){
 	int size = m_image->GetHeight()*m_image->GetWidth()*3;
 	MyImage* save = new MyImage(m_image->GetWidth(), m_image->GetHeight());
@@ -624,11 +645,11 @@ void MyPanel::Save(){
 	m_save.push_back(save);
 }
 
+// Annule le dernier traitement de l'image (jusqu'à ce qu'il n'y ait plus d'image)
 void MyPanel::Last(){
 	if(m_save.size()>1){
 		m_save.pop_back();
 	}
-	std::cout<< "Last" << std::endl;
 	int size = m_image->GetHeight()*m_image->GetWidth()*3;
 	memcpy(m_image->GetData(), m_save[m_save.size()-1]->GetData(), size);
 	this->Refresh();

@@ -25,6 +25,7 @@ void MyImage::Negative(){
 	}
 }
 
+// Transforme l'image en nuances de gris
 void MyImage::Desaturate(){
 	for(int i=0; i< (this->GetHeight()*this->GetWidth()*3);i+=3){
 		float l = this->GetData()[i]*0.2126+this->GetData()[i+1]*0.7152+this->GetData()[i+2]*0.0722;
@@ -34,6 +35,7 @@ void MyImage::Desaturate(){
 	}
 }
 
+// Seuillage en noir et blanc de l'image
 void MyImage::Threshold(int seuil){
 	this->Desaturate();
 	for(int i=0; i< (this->GetHeight()*this->GetWidth()*3);i+=3){
@@ -48,6 +50,7 @@ void MyImage::Threshold(int seuil){
 		}
 	}
 }
+
 
 void MyImage::Mirror(bool horizontaly){  //ça marche pas
 	int m = this->GetWidth()/2;
@@ -68,19 +71,6 @@ void MyImage::Mirror(bool horizontaly){  //ça marche pas
 		}
 	}
 	
-//	for(int i =0; i< (this->GetHeight()) ;i++){
-//		for(int j=0;j<m;j+=3){
-//			int rouge = this->GetData()[i*j];
-//			int vert = this->GetData()[i*j+1];
-//			int bleu = this->GetData()[i*j+2];
-//			this->GetData()[i*j] = this->GetData()[i*this->GetWidth() - j];
-//			this->GetData()[i*j+1] = this->GetData()[i*this->GetWidth() - (j+1)];
-//			this->GetData()[i*j+2] = this->GetData()[i*this->GetWidth() - (j+2)];
-//			this->GetData()[i*this->GetWidth() - j] = rouge;
-//			this->GetData()[i*this->GetWidth() - (j+1)] = vert;
-//			this->GetData()[i*this->GetWidth() - (j+2)] = bleu;
-//		}
-//	}
 }
 
 MyImage MyImage::Rotate90(){
@@ -103,6 +93,7 @@ MyImage MyImage::Rotate90(){
 	return nouvelle;
 }
 
+// Posterisation en 8 couleurs
 void MyImage::Posterize(){
 	for(int i=0;i<(this->GetHeight()*this->GetWidth()*3);i++){
 		if(this->GetData()[i]>127){
@@ -137,10 +128,8 @@ int MyImage::ComptageCouleurs(){
 
 }
 
-
+// Améliore le contraste d'une image ne nuance de gris
 void MyImage::EnhenceContrast(int minValue, int maxValue){
-	std::cout << "Imin: " << minValue << std::endl;
-	std::cout << "Imax: " << maxValue << std::endl;
 	int d = (255*minValue) /(maxValue-minValue);
 	int f = 255 /(maxValue-minValue);
 	for(int i=0; i< (this->GetHeight()*this->GetWidth()*3);i++){
@@ -149,6 +138,7 @@ void MyImage::EnhenceContrast(int minValue, int maxValue){
 	
 }
 
+// Augmente la luminosité de l'image
 void MyImage::Luminosity(int dl){
 	unsigned char* buffer = this->GetData();
 	for(int i=0; i< (this->GetHeight()*this->GetWidth()*3);i++){

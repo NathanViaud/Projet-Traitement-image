@@ -2,6 +2,7 @@
 
 wxDEFINE_EVENT(MON_EVENEMENT, wxCommandEvent);
 
+// Dialogue personalisé pour gérer le seuillage
 MyThresholdDialog::MyThresholdDialog( 
 	wxWindow* parent, wxWindowID id, const wxString& title, 
 	const wxPoint& pos, const wxSize& size, long style ) 

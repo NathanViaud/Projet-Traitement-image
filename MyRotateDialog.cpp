@@ -3,6 +3,7 @@
 #include <wx/intl.h>
 #include <wx/string.h>
 
+// Dialogue personalisé pour gérer la rotation de l'image
 MyRotateDialog::MyRotateDialog(wxWindow* parent,wxWindowID id,const wxPoint& pos,const wxSize& size)
 :wxDialog(parent, id, wxT("Rotation"), pos, size)
 {

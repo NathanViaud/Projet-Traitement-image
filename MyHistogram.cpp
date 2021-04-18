@@ -4,8 +4,8 @@
 MyHistogram::MyHistogram(MyImage *img):image(img){
 	int size = image->GetHeight()*image->GetWidth()*3;
 	int save[size];
-	memcpy(save, image->GetData(), size);
-	image->Desaturate();
+	memcpy(save, image->GetData(), size); // Sauvegarde de l'image
+	image->Desaturate(); // Desaturation de l'image pour créer l'histogram
 	tableau = (int*) calloc(256, 8);
 	for(int i=0;i<size;i+=3){
 		for(int j=0;j<255 && j<= image->GetData()[i];j++){
@@ -14,9 +14,10 @@ MyHistogram::MyHistogram(MyImage *img):image(img){
 		}
 		}
 	}
-	memcpy(image->GetData(), save, size);
+	memcpy(image->GetData(), save, size); // Récupération de l'image de base
 }
 
+// Retourne la valeur min et max des pixels(nuances de gris)
 void MyHistogram::GetDynamic(int *minValue, int *maxValue){
 	int min, max;
 	bool init = false;
@@ -34,8 +35,6 @@ void MyHistogram::GetDynamic(int *minValue, int *maxValue){
 			}
 		}
 	}
-	std::cout << "Hmin: " << min << std::endl;
-	std::cout << "Hmax: " << max << std::endl;
 	*minValue = min;
 	*maxValue = max;
 }
